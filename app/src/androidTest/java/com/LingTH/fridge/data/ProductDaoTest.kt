@@ -62,10 +62,10 @@ class ProductDaoTest {
 
     @Test
     fun insertWithExistingIdIsSilentlyIgnored() = runTest {
-        // Documents OnConflictStrategy.IGNORE: no exception, nothing written.
-        // Addviewmodel.saveProduct() still calls onSaved() in this case (see bug report).
-        dao.insertProduct(product(id = 7, name = "Original"))
-        dao.insertProduct(product(id = 7, name = "Duplicate"))
+        // OnConflictStrategy.IGNORE: no exception, nothing written, returns -1
+        // (Addviewmodel.saveProduct() turns that into onError)
+        assertEquals(7L, dao.insertProduct(product(id = 7, name = "Original")))
+        assertEquals(-1L, dao.insertProduct(product(id = 7, name = "Duplicate")))
 
         val all = dao.getAllProductsOnce()
         assertEquals(1, all.size)

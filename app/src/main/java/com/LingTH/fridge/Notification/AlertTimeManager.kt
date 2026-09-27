@@ -10,7 +10,7 @@ class AlertTimeManager(
     private val startHour: Int = 9,
     private val endHour: Int = 21
 ) {
-    private val timeSlots: List<LocalTime> = run {
+    val timeSlots: List<LocalTime> = run {
         val start = LocalTime.of(startHour, 0)
         val end = LocalTime.of(endHour, 0)
         val interval = Duration.between(start, end).dividedBy(alertsPerDay.toLong())

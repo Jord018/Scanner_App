@@ -146,13 +146,13 @@ class FilterViewModel(private val dao: ProductDao) : ViewModel() {
                     )
 
 
-            val daysAgo = ChronoUnit.DAYS.between(
-                Instant.ofEpochMilli(addDay!!).atZone(ZoneId.systemDefault()).toLocalDate(),
-                LocalDate.now()
-            )
-
-            val relativeString = "Added $daysAgo day(s) ago"
-            val matchesAdded = selectedAdded.value.isEmpty() || selectedAdded.value.contains(relativeString)
+            val matchesAdded = selectedAdded.value.isEmpty() || (addDay != null && run {
+                val daysAgo = ChronoUnit.DAYS.between(
+                    Instant.ofEpochMilli(addDay).atZone(ZoneId.systemDefault()).toLocalDate(),
+                    LocalDate.now()
+                )
+                selectedAdded.value.contains("Added $daysAgo day(s) ago")
+            })
 
             val matchesPhoto = selectedAddedPhoto.value.isEmpty() || (
                     selectedAddedPhoto.value.contains("Added Photo") && product.image_url.isNotBlank() ||
@@ -176,12 +176,9 @@ class FilterViewModel(private val dao: ProductDao) : ViewModel() {
             "Name (A-Z)" -> filtered.sortedBy { it.product_name.lowercase() }
             "Name (Z-A)" -> filtered.sortedByDescending { it.product_name.lowercase() }
 
-            "Expiration Date (Latest)" -> filtered
-                .filter { it.expiration_date != null && it.expiration_date > now }
-                .sortedBy { it.expiration_date }
-
-            "Expiration Date (Soonest)" -> filtered
-                .filter { it.expiration_date != null && it.expiration_date > now }
+            // Products without an expiration date go last in both orders
+            "Expiration Date (Soonest)" -> filtered.sortedBy { it.expiration_date ?: Long.MAX_VALUE }
+            "Expiration Date (Latest)" -> filtered.sortedByDescending { it.expiration_date ?: Long.MIN_VALUE }
 
             else -> filtered
         }

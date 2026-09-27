@@ -115,6 +115,10 @@ import com.LingTH.fridge.Barcode.Add
 import com.LingTH.fridge.Barcode.Edit
 import com.LingTH.fridge.Barcode.Scanner
 import com.LingTH.fridge.Notification.BootReceiver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
+import com.LingTH.fridge.Notification.scheduleExpiryChecksFromSettings
 import com.LingTH.fridge.sortandfilter.FilterViewModel
 import com.LingTH.fridge.sortandfilter.FilterViewModelFactory
 import com.LingTH.fridge.sortandfilter.getPrimaryCategory
@@ -171,7 +175,10 @@ class MainActivity2 : ComponentActivity() {
                 }
             }
         }
-        scheduleRepeatingAlarm(this)
+        cancelLegacyRepeatingAlarm(this)
+        lifecycleScope.launch(Dispatchers.IO) {
+            scheduleExpiryChecksFromSettings(applicationContext, replace = false)
+        }
 
         setContent {
             MyApplicationTheme {
@@ -498,27 +505,16 @@ fun ProductFabs(onScan: () -> Unit, onAddManually: () -> Unit) {
 }
 
 
-fun scheduleRepeatingAlarm(context: Context) {
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    val intent = Intent(context, BootReceiver::class.java)
+// Older versions set a 10-second repeating alarm here; remove it if it is still registered
+fun cancelLegacyRepeatingAlarm(context: Context) {
     val pendingIntent = PendingIntent.getBroadcast(
         context,
         0,
-        intent,
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
-
-    val intervalMillis = 10_000L // 10 วินาที
-
-    val startTime = System.currentTimeMillis() + 5_000L // เริ่มหลังจากนี้ 5 วิ
-
-    // 🔁 ตั้ง alarm แบบทำซ้ำ (ในบางรุ่นอาจไม่แม่น แต่ใช้ได้ดีพอสำหรับกรณีทั่วไป)
-    alarmManager.setRepeating(
-        AlarmManager.RTC_WAKEUP,
-        startTime,
-        intervalMillis,
-        pendingIntent
-    )
+        Intent(context, BootReceiver::class.java),
+        PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+    ) ?: return
+    (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pendingIntent)
+    pendingIntent.cancel()
 }
 @Composable
 fun SmartImageLoader(
@@ -779,7 +775,10 @@ fun TutorialVideoScreen(
 
             // Skip Button
             Button(
-                onClick = { navController.navigate("main") },
+                onClick = {
+                    // Tutorial is opened from the product list; "main" was never a route
+                    if (!navController.popBackStack()) navController.navigate("productList")
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary

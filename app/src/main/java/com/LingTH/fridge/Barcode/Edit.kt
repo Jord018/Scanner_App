@@ -216,7 +216,8 @@ fun ProductScreen1(product: ProductData?, viewModel: Addviewmodel,navController:
 
 
 fun Long.toDateStringEdit(): String {
-    val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    // Must match the format toEpochMillisEdit() and the date pickers use
+    val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     return format.format(Date(this))
 }
 

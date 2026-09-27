@@ -15,11 +15,12 @@ class FakeProductDao(initial: List<ProductData> = emptyList()) : ProductDao {
     var failWrites = false
     private var nextId = (initial.maxOfOrNull { it.id } ?: 0) + 1
 
-    override suspend fun insertProduct(product: ProductData) {
+    override suspend fun insertProduct(product: ProductData): Long {
         if (failWrites) throw IllegalStateException("write failed")
         val withId = if (product.id == 0) product.copy(id = nextId++) else product
-        if (products.value.any { it.id == withId.id }) return // IGNORE
+        if (products.value.any { it.id == withId.id }) return -1L // IGNORE
         products.value = products.value + withId
+        return withId.id.toLong()
     }
 
     override suspend fun insertInspection(inspection: InspectionData) = Unit

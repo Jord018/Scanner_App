@@ -10,8 +10,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ProductDao {
 
+    /** Returns the new row id, or -1 if a product with the same id already exists. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertProduct(product: ProductData)
+    suspend fun insertProduct(product: ProductData): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInspection(inspection: InspectionData)

@@ -11,3 +11,12 @@ data class Settings(
     val repeatAlert: String,
     val email: String
 )
+
+// Used until the user saves Settings for the first time; matches the Settings screen defaults
+val DefaultSettings = Settings(
+    id = 0,
+    alertBeforeExpiry = "3 days",
+    alertMode = "Normal",
+    repeatAlert = "4",
+    email = ""
+)

@@ -337,6 +337,9 @@ fun saveProductIfValid(
             onSaved = {
                 Toast.makeText(context, "Product saved successfully", Toast.LENGTH_SHORT).show()
                 onComplete()
+            },
+            onError = {
+                Toast.makeText(context, "Failed to save product", Toast.LENGTH_SHORT).show()
             }
         )
     }

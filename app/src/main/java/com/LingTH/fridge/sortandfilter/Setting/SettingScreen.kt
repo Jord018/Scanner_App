@@ -1,4 +1,5 @@
 package com.LingTH.fridge.sortandfilter.Setting
+import com.LingTH.fridge.Notification.scheduleExpiryChecks
 import android.app.Activity
 import android.content.Intent
 import android.widget.Toast
@@ -137,6 +138,7 @@ fun SettingsScreen(
                 )
 
                 viewModel.saveSettings(settings)
+                scheduleExpiryChecks(context, settings.repeatAlert.toIntOrNull() ?: 1, replace = true)
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
             },
             modifier = Modifier

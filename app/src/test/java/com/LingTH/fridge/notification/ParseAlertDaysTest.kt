@@ -1,7 +1,6 @@
 package com.LingTH.fridge.notification
 
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Test
 import parseAlertDays
 
@@ -44,10 +43,9 @@ class ParseAlertDaysTest {
         assertEquals(emptyList<Int>(), parseAlertDays(""))
     }
 
-    @Ignore("BUG: MIGRATION_2_3_TO_3 seeds alertBeforeExpiry = 'ก่อน 1 วัน', which parseAlertDays cannot read, " +
-        "so no 'expiring soon' alerts fire until the user saves Settings once")
     @Test
-    fun `default value seeded by the migration is parsed`() {
+    fun `Thai value seeded by old builds is parsed`() {
         assertEquals(listOf(1), parseAlertDays("ก่อน 1 วัน"))
+        assertEquals(listOf(14), parseAlertDays("2 สัปดาห์"))
     }
 }

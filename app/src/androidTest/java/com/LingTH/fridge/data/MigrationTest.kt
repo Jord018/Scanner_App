@@ -6,7 +6,6 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.LingTH.fridge.migration.MIGRATION_1_2
 import com.LingTH.fridge.migration.MIGRATION_2_3
-import com.LingTH.fridge.migration.MIGRATION_2_3_TO_3
 import com.LingTH.fridge.testutil.appContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -70,7 +69,7 @@ class MigrationTest {
     // Same migration list as InventoryDatabase.getDatabase()
     private fun openWithAppMigrations(): InventoryDatabase =
         Room.databaseBuilder(appContext, InventoryDatabase::class.java, dbName)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_2_3_TO_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .allowMainThreadQueries()
             .build()
 
@@ -84,8 +83,9 @@ class MigrationTest {
             assertEquals(listOf("Old milk"), products.map { it.product_name })
 
             val settings = db.settingsDao().getSettings()!!
-            assertEquals("ปกติ", settings.alertMode)
-            assertEquals("ก่อน 1 วัน", settings.alertBeforeExpiry)
+            assertEquals("Normal", settings.alertMode)
+            assertEquals("3 days", settings.alertBeforeExpiry)
+            assertEquals("4", settings.repeatAlert)
         } finally {
             db.close()
         }

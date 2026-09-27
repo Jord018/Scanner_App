@@ -83,7 +83,8 @@ class Addviewmodel(private val productDao: ProductDao) : ViewModel() {
         add_day: Long,
         expie_day: Long,
         notes: String,
-        onSaved: () -> Unit
+        onSaved: () -> Unit,
+        onError: () -> Unit = {}
     ) {
         viewModelScope.launch {
             if (productData == null) {
@@ -110,12 +111,18 @@ class Addviewmodel(private val productDao: ProductDao) : ViewModel() {
 
             try {
                 productData?.let {
-                    productDao.insertProduct(it)
+                    // IGNORE on conflict returns -1 instead of throwing
+                    if (productDao.insertProduct(it) == -1L) {
+                        Log.e("SaveProductError", "Product id ${it.id} already exists, nothing saved")
+                        onError()
+                        return@launch
+                    }
                     _saveCompleted.value = true // ✅ Trigger event
                     onSaved()
                 }
             } catch (e: Exception) {
                 Log.e("SaveProductError", "Error inserting product", e)
+                onError()
             }
         }
     }

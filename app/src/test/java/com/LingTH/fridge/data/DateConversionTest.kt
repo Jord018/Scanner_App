@@ -11,7 +11,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Test
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -50,9 +49,6 @@ class DateConversionTest {
         assertEquals("2027-03-15", millis.toDateString())
     }
 
-    @Ignore("BUG: Edit screen stores dates with toDateStringEdit (yyyy-MM-dd) but reads them with " +
-        "toEpochMillisEdit (dd/MM/yyyy). Saving an edit without re-picking the dates writes 0 (1970), " +
-        "so the product shows as expired")
     @Test
     fun `edit screen date format round trips`() {
         val original = "15/03/2027".toEpochMillisEdit()

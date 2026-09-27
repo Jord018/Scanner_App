@@ -49,6 +49,33 @@ class AddViewModelTest {
     }
 
     @Test
+    fun `saveProduct reports an error when the write fails`() {
+        val dao = FakeProductDao().apply { failWrites = true }
+        val vm = Addviewmodel(dao)
+        var error = false
+
+        vm.saveProduct("1", "Milk", "dairy", "", 1L, 2L, "", onSaved = {}, onError = { error = true })
+
+        assertTrue(error)
+    }
+
+    @Test
+    fun `saveProduct reports an error instead of success when the id already exists`() {
+        val dao = FakeProductDao(listOf(product(id = 3, name = "Existing")))
+        val vm = Addviewmodel(dao)
+        vm.productData = product(id = 3, name = "Scanned")
+        var saved = false
+        var error = false
+
+        vm.saveProduct("1", "Milk", "dairy", "", 1L, 2L, "", onSaved = { saved = true }, onError = { error = true })
+
+        assertFalse(saved)
+        assertTrue(error)
+        assertFalse(vm.saveCompleted.value)
+        assertEquals(listOf("Existing"), dao.products.value.map { it.product_name })
+    }
+
+    @Test
     fun `resetSaveFlag clears the completed flag`() {
         val vm = Addviewmodel(FakeProductDao())
         vm.saveProduct("1", "Milk", "dairy", "", 1L, 2L, "", onSaved = {})

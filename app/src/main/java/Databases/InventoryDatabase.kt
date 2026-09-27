@@ -9,7 +9,6 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.LingTH.fridge.migration.MIGRATION_1_2
 import com.LingTH.fridge.migration.MIGRATION_2_3
-import com.LingTH.fridge.migration.MIGRATION_2_3_TO_3
 
 @Database(entities = [ProductData::class, InspectionData::class, Settings::class], version = 3)
 abstract class InventoryDatabase : RoomDatabase() {
@@ -27,7 +26,7 @@ abstract class InventoryDatabase : RoomDatabase() {
                     InventoryDatabase::class.java,
                     "inventory_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_2_3_TO_3)  // ✅ Add new migration
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance
                 instance

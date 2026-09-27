@@ -4,7 +4,6 @@ import com.LingTH.fridge.testutil.FakeProductDao
 import com.LingTH.fridge.testutil.MainDispatcherRule
 import com.LingTH.fridge.testutil.product
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -114,7 +113,6 @@ class FilterViewModelTest {
         assertEquals(listOf("Water", "Milk", "apple"), vm.names())
     }
 
-    @Ignore("BUG: 'Expiration Date (Soonest)' only drops expired items; it never sorts")
     @Test
     fun `sort by soonest expiration puts the nearest date first`() {
         val vm = viewModel(water, chips, milk, apple)
@@ -122,7 +120,6 @@ class FilterViewModelTest {
         assertEquals(listOf("Milk", "apple", "Chips", "Water"), vm.names())
     }
 
-    @Ignore("BUG: 'Expiration Date (Latest)' sorts ascending, i.e. soonest first")
     @Test
     fun `sort by latest expiration puts the furthest date first`() {
         val vm = viewModel(milk, water, apple, chips)
@@ -130,7 +127,6 @@ class FilterViewModelTest {
         assertEquals(listOf("Water", "Chips", "apple", "Milk"), vm.names())
     }
 
-    @Ignore("BUG: filterProducts() uses add_day!!, so one product with add_day = null crashes the whole list")
     @Test
     fun `product without an added date does not crash filtering`() {
         val noAddDay = product(id = 9, name = "Mystery", addedDaysAgo = null)

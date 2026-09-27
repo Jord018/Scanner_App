@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.LingTH.fridge.R
+import com.LingTH.fridge.sortandfilter.Setting.DefaultSettings
 import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.time.LocalTime
@@ -26,12 +27,8 @@ class ExpiryCheckWorker(
         val productDao = db.productDao()
         val settingsDao = db.settingsDao()
 
-        val settings = settingsDao.getSettings()
-
-        if (settings == null) {
-            Log.w("ExpiryWorker", "⚠️ Settings not found.")
-            return Result.success()
-        }
+        // Fresh installs have no settings row until the user saves Settings once
+        val settings = settingsDao.getSettings() ?: DefaultSettings
 
         val alertDaysList = parseAlertDays(settings.alertBeforeExpiry)
         val alertMode = settings.alertMode // 🆕 ดึงโหมดจาก Settings
@@ -171,7 +168,12 @@ fun parseAlertDays(input: String): List<Int> {
     Log.d("ExpiryWorker", "🛠 Parsing alert days from input: \"$input\"")
 
     return input.split(",").mapNotNull { raw ->
+        // Old builds seeded Thai values such as "ก่อน 1 วัน"; map them to the English form
         val trimmed = raw.trim().lowercase()
+            .removePrefix("ก่อน").trim()
+            .replace(Regex("""(\d+)\s*วัน"""), "$1 days")
+            .replace(Regex("""(\d+)\s*สัปดาห์"""), "$1 weeks")
+            .replace(Regex("""(\d+)\s*เดือน"""), "$1 months")
 
         when {
             trimmed.matches(Regex("""\d+ day[s]?""")) -> {

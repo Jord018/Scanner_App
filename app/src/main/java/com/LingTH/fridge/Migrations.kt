@@ -17,6 +17,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         """)
     }
 }
+// Room only keeps one migration per (start, end) pair, so 2 -> 3 must be a single object
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL("""
@@ -28,34 +29,11 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
                 email TEXT NOT NULL
             )
         """.trimIndent())
+
+        // Same values as DefaultSettings / the Settings screen options
+        database.execSQL("""
+            INSERT OR IGNORE INTO settings_table (id, alertBeforeExpiry, alertMode, repeatAlert, email)
+            VALUES (0, '3 days', 'Normal', '4', '')
+        """.trimIndent())
     }
 }
-
-val MIGRATION_2_3_TO_3 = object : Migration(2, 3) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        // สร้างตาราง settings_table
-        database.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS settings_table (
-                id INTEGER PRIMARY KEY NOT NULL,
-                alertBeforeExpiry TEXT NOT NULL,
-                alertMode TEXT NOT NULL,
-                repeatAlert TEXT NOT NULL,
-                email TEXT NOT NULL
-            )
-            """
-        )
-
-        // เพิ่มข้อมูลเริ่มต้น
-        database.execSQL(
-            """
-            INSERT INTO settings_table (id, alertBeforeExpiry, alertMode, repeatAlert, email) 
-            VALUES (0, 'ก่อน 1 วัน', 'ปกติ', '6', '')
-            """
-        )
-    }
-}
-
-
-
-
