@@ -31,8 +31,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.NoPhotography
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
+import android.app.Activity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
@@ -104,11 +120,31 @@ fun ScannerScreen() {
 
         }
     } else {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Camera permission is required to scan barcodes")
+        Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.NoPhotography,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(56.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "Camera permission is required to scan barcodes",
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                    Text("Allow camera")
+                }
+            }
         }
     }
 }
@@ -142,19 +178,23 @@ fun CameraPreview(
 @Composable
 fun CameraOverlayUI(cameraControl: CameraControl?) {
     var flashEnabled by remember { mutableStateOf(false) }
+    val activity = LocalContext.current as? Activity
+    val frameColor = MaterialTheme.colorScheme.primaryContainer
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f)) // พื้นหลังมืด
+            // Offscreen so BlendMode.Clear only cuts the window in this overlay
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .background(Color.Black.copy(alpha = 0.6f))
     ) {
-        // กล่องโปร่งกลางจอ (ไม่มีขอบ)
+        // Transparent scan window with mint corner brackets
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(width = 200.dp, height = 200.dp)
+                .size(width = 260.dp, height = 200.dp)
                 .drawWithContent {
-                    val cornerRadius = 16.dp.toPx()
+                    val cornerRadius = 20.dp.toPx()
                     drawIntoCanvas { canvas ->
                         val paint = Paint().apply {
                             color = Color.Transparent
@@ -170,42 +210,71 @@ fun CameraOverlayUI(cameraControl: CameraControl?) {
                             paint = paint
                         )
                     }
+                    val len = 36.dp.toPx()
+                    val stroke = 4.dp.toPx()
+                    val w = size.width
+                    val h = size.height
+                    listOf(
+                        Offset(0f, 0f) to Offset(len, 0f), Offset(0f, 0f) to Offset(0f, len),
+                        Offset(w, 0f) to Offset(w - len, 0f), Offset(w, 0f) to Offset(w, len),
+                        Offset(0f, h) to Offset(len, h), Offset(0f, h) to Offset(0f, h - len),
+                        Offset(w, h) to Offset(w - len, h), Offset(w, h) to Offset(w, h - len),
+                    ).forEach { (start, end) ->
+                        drawLine(frameColor, start, end, strokeWidth = stroke, cap = StrokeCap.Round)
+                    }
                     drawContent()
                 }
         )
 
-        // ข้อความอยู่ใต้กรอบ
-        Text(
-            text = "Scan Barcode",
-            color = Color.White,
-            fontSize = 36.sp,
+        // Close button
+        FilledTonalIconButton(
+            onClick = { activity?.finish() },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Close, contentDescription = "Close scanner")
+        }
+
+        // Hint under the frame
+        Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .offset(y = 140.dp)
-                .padding(8.dp)
-        )
+                .offset(y = 150.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Scan Barcode",
+                color = Color.White,
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Text(
+                text = "Point the camera at the product barcode",
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
         // ปุ่มแฟลช
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            IconButton(onClick = {
+        FilledTonalIconButton(
+            onClick = {
                 cameraControl?.let {
                     flashEnabled = !flashEnabled
                     it.enableTorch(flashEnabled)
                 }
-            }) {
-                Icon(
-                    imageVector = if (flashEnabled) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
-                    contentDescription = "Toggle Flash",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(32.dp)
+                .size(64.dp)
+        ) {
+            Icon(
+                imageVector = if (flashEnabled) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
+                contentDescription = "Toggle Flash",
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
 }

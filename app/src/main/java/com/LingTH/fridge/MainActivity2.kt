@@ -2,6 +2,7 @@ package com.LingTH.fridge
 
 
 import Databases.ProductData
+import Databases.daysUntilExpiry
 import InventoryDatabase
 import android.annotation.SuppressLint
 import android.app.AlarmManager
@@ -24,56 +25,59 @@ import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.BottomAppBar
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Camera
-import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Kitchen
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -85,22 +89,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
@@ -109,22 +112,26 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.LingTH.fridge.Barcode.Add
-import com.LingTH.fridge.Notification.BootReceiver
 import com.LingTH.fridge.Barcode.Edit
-
+import com.LingTH.fridge.Barcode.Scanner
+import com.LingTH.fridge.Notification.BootReceiver
 import com.LingTH.fridge.sortandfilter.FilterViewModel
 import com.LingTH.fridge.sortandfilter.FilterViewModelFactory
-import com.LingTH.fridge.Barcode.Scanner
-import androidx.compose.ui.graphics.Color  // ✅ Use this for Jetpack Compose
-import androidx.compose.material.ButtonDefaults
-import androidx.media3.common.util.UnstableApi
-import androidx.compose.material.Button
+import com.LingTH.fridge.sortandfilter.getPrimaryCategory
+import com.LingTH.fridge.ui.theme.MyApplicationTheme
+import com.LingTH.fridge.ui.theme.expiryStatus
 
-import androidx.compose.material.Text
-
-
-import androidx.compose.ui.unit.dp
-import androidx.media3.common.Player
+// Test tags shared with the UI tests
+object UiTags {
+    const val SEARCH_FIELD = "search_field"
+    const val PRODUCT_GRID = "product_grid"
+    const val PRODUCT_CARD = "product_card"
+    const val EXPIRY_BADGE = "expiry_badge"
+    const val EMPTY_STATE = "empty_state"
+    const val SCAN_FAB = "scan_fab"
+    const val ADD_FAB = "add_fab"
+    const val SAVE_BUTTON = "save_button"
+}
 
 class MainActivity2 : ComponentActivity() {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
@@ -166,197 +173,192 @@ class MainActivity2 : ComponentActivity() {
         }
         scheduleRepeatingAlarm(this)
 
-
-
-
         setContent {
-            val navController = rememberNavController()
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val isSettingsScreen = navBackStackEntry?.destination?.route == "settings"
-            val isFilterScreen = navBackStackEntry?.destination?.route == "Sorting and Filter"
+            MyApplicationTheme {
+                val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val route = navBackStackEntry?.destination?.route
+                val isSettingsScreen = route == "settings"
+                val isFilterScreen = route == "Sorting and Filter"
+                val isTutorialScreen = route == "tutorial"
 
-            var searchText by remember { mutableStateOf("") } // This was from the previous state, let's keep it for now if FilterViewModel not updated yet
-            val context = LocalContext.current
-            val database = InventoryDatabase.getDatabase(context)
-            val productDao = database.productDao()
-            val filterViewModel: FilterViewModel = viewModel(
-                factory = FilterViewModelFactory(productDao)
-            )
-            LaunchedEffect(searchText) {
-                filterViewModel.setSearchText(searchText)
+                var searchText by remember { mutableStateOf("") }
+                val context = LocalContext.current
+                val database = InventoryDatabase.getDatabase(context)
+                val productDao = database.productDao()
+                val filterViewModel: FilterViewModel = viewModel(
+                    factory = FilterViewModelFactory(productDao)
+                )
+                LaunchedEffect(searchText) {
+                    filterViewModel.setSearchText(searchText)
 
-                val notificationManager =
-                    context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                val channelId = "test_channel"
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val channel = NotificationChannel(
-                        channelId,
-                        "Test Channel",
-                        NotificationManager.IMPORTANCE_HIGH
-                    )
-                    notificationManager.createNotificationChannel(channel)
+                    val notificationManager =
+                        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    val channelId = "test_channel"
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val channel = NotificationChannel(
+                            channelId,
+                            "Test Channel",
+                            NotificationManager.IMPORTANCE_HIGH
+                        )
+                        notificationManager.createNotificationChannel(channel)
+                    }
                 }
-            }
 
-            Scaffold(
-                topBar = {
-                    if (!isSettingsScreen) {
-                        TopBar(
-                            searchText = searchText,
-                            onSearchTextChange = { searchText = it },
-                            isFilterScreen = isFilterScreen,
-                            onFilterChanged = { isFiltering ->
-                                if (isFiltering) {
-                                    navController.navigate("Sorting and Filter") {
+                Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    topBar = {
+                        if (!isSettingsScreen && !isTutorialScreen) {
+                            TopBar(
+                                searchText = searchText,
+                                onSearchTextChange = { searchText = it },
+                                isFilterScreen = isFilterScreen,
+                                onFilterChanged = { isFiltering ->
+                                    if (isFiltering) {
+                                        navController.navigate("Sorting and Filter") {
+                                            popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                                            launchSingleTop = true
+                                        }
+                                    } else {
+                                        navController.popBackStack()
+                                    }
+                                },
+                                onHelpClick = { navController.navigate("tutorial") }
+                            )
+                        }
+                    },
+                    floatingActionButton = {
+                        if (route == "productList" || route == null) {
+                            ProductFabs(
+                                onScan = { context.startActivity(Intent(context, Scanner::class.java)) },
+                                onAddManually = { context.startActivity(Intent(context, Add::class.java)) }
+                            )
+                        }
+                    },
+                    bottomBar = {
+                        if (!isTutorialScreen) {
+                            BottomBar(navController, isSettingsScreen) { isSettings ->
+                                if (isSettings) {
+                                    navController.navigate("settings") {
                                         popUpTo(navController.graph.startDestinationId) { inclusive = false }
                                         launchSingleTop = true
                                     }
                                 } else {
-                                    // Assuming navigating back from filter screen goes to productList or similar
                                     navController.popBackStack()
                                 }
                             }
-                        )
-                    } else {
-                        null
-                    }
-                },
-                bottomBar = {
-                    BottomBar(navController, isSettingsScreen) { isSettings ->
-                        if (isSettings) {
-                            navController.navigate("settings") {
-                                popUpTo(navController.graph.startDestinationId) { inclusive = false }
-                                launchSingleTop = true
-                            }
-                        } else {
-                            navController.popBackStack()
                         }
                     }
+                ) { paddingValues ->
+                    NavigationGraph(
+                        navController = navController,
+                        paddingValues = paddingValues,
+                        filterViewModel = filterViewModel
+                    )
                 }
-            ) { paddingValues ->
-                NavigationGraph(
-                    navController = navController,
-                    paddingValues = paddingValues,
-                    filterViewModel = filterViewModel
-                )
             }
         }
     }
 }
-    // Optional: ตรวจผลการขอ permission
 
 
-
-
-
-
-
-
-
+@kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopBar(
     searchText: String,
     onSearchTextChange: (String) -> Unit,
     isFilterScreen: Boolean,
     onFilterChanged: (Boolean) -> Unit,
+    onHelpClick: () -> Unit = {},
 ) {
-    val insets = WindowInsets.statusBars.asPaddingValues()
-
     TopAppBar(
-        backgroundColor = Color.White,
-        elevation = 0.dp,
-        modifier = Modifier
-            .padding(top = insets.calculateTopPadding())
-            .fillMaxWidth()
-            .height(64.dp),
-        title = {
-            if (!isFilterScreen) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.iconapp),
-                        contentDescription = "Logo Icon",
-                        modifier = Modifier
-                            .size(60.dp)
-                            .padding(end = 8.dp)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .background(
-                                color = Color(0xFFF0F0F0),
-                                shape = RoundedCornerShape(24.dp)
-                            )
-                            .padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            BasicTextField(
-                                value = searchText,
-                                onValueChange = onSearchTextChange,
-                                singleLine = true,
-                                textStyle = LocalTextStyle.current.copy(
-                                    color = Color.Black,
-                                    fontSize = 14.sp
-                                ),
-                                decorationBox = { innerTextField ->
-                                    if (searchText.isEmpty()) {
-                                        Text(
-                                            "Search",
-                                            color = Color.Gray,
-                                            fontSize = 14.sp
-                                        )
-                                    }
-                                    innerTextField()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background
+        ),
+        navigationIcon = {
+            if (isFilterScreen) {
+                IconButton(onClick = { onFilterChanged(false) }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             } else {
+                Image(
+                    painter = painterResource(id = R.drawable.iconapp),
+                    contentDescription = "Logo Icon",
+                    modifier = Modifier
+                        .padding(start = 12.dp, end = 4.dp)
+                        .size(40.dp)
+                        .clip(CircleShape)
+                )
+            }
+        },
+        title = {
+            if (!isFilterScreen) {
+                SearchField(
+                    value = searchText,
+                    onValueChange = onSearchTextChange,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
                 Text(
-                    text = "Sorting and Filtering",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 22.sp,
-                    color = Color.Black
+                    text = "Sort & Filter",
+                    style = MaterialTheme.typography.titleLarge
                 )
             }
         },
         actions = {
-            IconButton(
-                onClick = {
-                    if (isFilterScreen) {
-                        onFilterChanged(false) // ปิดหน้า Filter
-                    } else {
-                        onFilterChanged(true)  // เปิดหน้า Filter
-                    }
+            if (!isFilterScreen) {
+                IconButton(onClick = onHelpClick) {
+                    Icon(Icons.AutoMirrored.Outlined.HelpOutline, contentDescription = "Tutorial")
                 }
+            }
+            FilledIconButton(
+                onClick = { onFilterChanged(!isFilterScreen) },
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = if (isFilterScreen) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = if (isFilterScreen) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                modifier = Modifier.padding(end = 4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.FilterAlt,
-                    contentDescription = "Filter",
-                    tint = Color.Black
-                )
+                Icon(Icons.Default.FilterList, contentDescription = "Filter")
             }
         }
     )
 }
 
-
-
-
-
+@Composable
+fun SearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        placeholder = { Text("Search your fridge", style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onValueChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                }
+            }
+        },
+        textStyle = MaterialTheme.typography.bodyMedium,
+        shape = RoundedCornerShape(28.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        modifier = modifier
+            .height(52.dp)
+            .testTag(UiTags.SEARCH_FIELD)
+    )
+}
 
 
 @Composable
@@ -364,245 +366,134 @@ fun ProductCard(
     product: ProductData,
     onClick: () -> Unit,
 ) {
-    val tagsToCheck = listOf("water", "snack", "food")
+    val category = getPrimaryCategory(product.categories)
+    val status = expiryStatus(product.daysUntilExpiry())
 
-    // แยก categories เป็น list แก้ lower case
-    val categoriesList = product.categories.split(",").map { it.trim().lowercase() }
-
-    // หา tag ที่ contain คำใน tagsToCheck
-    val selectedCategory = categoriesList.firstOrNull { category ->
-        tagsToCheck.any { tag -> category.contains(tag) }
-    } ?: categoriesList.firstOrNull() ?: ""
-
-    Card(
-        shape = RoundedCornerShape(10.dp),
-        backgroundColor = Color.White,
+    ElevatedCard(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier
-            .heightIn(min = 160.dp, max = 240.dp)
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(10.dp))
-            .clickable { onClick() },
-        elevation = 4.dp
+            .testTag(UiTags.PRODUCT_CARD)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+        ) {
+            SmartImageLoader(
+                imagePath = product.image_url,
+                modifier = Modifier.fillMaxSize()
+            )
+            Surface(
+                color = status.color,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(50),
                 modifier = Modifier
+                    .align(Alignment.TopStart)
                     .padding(8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFE3F2FD))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .testTag(UiTags.EXPIRY_BADGE)
             ) {
                 Text(
-                    text = selectedCategory,
-                    fontSize = 12.sp,
-                    color = Color(0xFF1976D2),
-                    fontWeight = FontWeight.Bold,
+                    text = status.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                text = product.product_name.ifBlank { "Unnamed item" },
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (category.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = category,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                SmartImageLoader(
-                    imagePath = product.image_url,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .aspectRatio(1f)
-                        .align(Alignment.Center)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
-            }
-
-            Row(
-                modifier = Modifier
-                    .background(Color(0xFFBBDEFB))
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = product.product_name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
     }
 }
 
 
-
-
-
-@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun BottomBar(
     navController: NavHostController,
     isSettingsScreen: Boolean,
     onSettingsChanged: (Boolean) -> Unit
 ) {
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val iconSize = (screenWidth * 0.08f).coerceIn(40.dp, 50.dp)
-    val context = LocalContext.current
-
-    Box {
-        BottomAppBar(
-            backgroundColor = Color.White,
-            elevation = 0.dp,
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(70.dp)
-                .drawBehind {
-                    drawLine(
-                        color = Color.Black,
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width, 0f),
-                        strokeWidth = 2.dp.toPx()
-                    )
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+        NavigationBarItem(
+            selected = !isSettingsScreen,
+            onClick = {
+                if (isSettingsScreen) {
+                    onSettingsChanged(false)
+                } else {
+                    navController.navigate("productList") {
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
-        ) {
-            // ปุ่ม Product List
-            IconButton(
-                onClick = {
-                    if (isSettingsScreen) {
-                        navController.popBackStack() // กลับหน้าก่อนหน้า (productList)
-                        onSettingsChanged(false)
-                    } else {
-                        navController.navigate("productList") {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                },
-                modifier = Modifier.size(50.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.List,
-                    contentDescription = "Menu",
-                    tint = if (!isSettingsScreen) Color.Black else Color(0xFF6B7280),
-                    modifier = Modifier.size(iconSize)
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f)) // เว้นที่ไว้กลางเพื่อ FAB
-
-            Spacer(modifier = Modifier.weight(1f)) // เว้นที่ไว้กลางเพื่อ FAB
-
-            // ปุ่ม Settings
-            IconButton(
-                onClick = {
-                    if (!isSettingsScreen) {
-                        onSettingsChanged(true)
-                        navController.navigate("settings")
-                    } else {
-                        onSettingsChanged(false)
-                        navController.popBackStack()
-                    }
-                },
-                modifier = Modifier.size(50.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = if (isSettingsScreen) Color.Black else Color(0xFF6B7280),
-                    modifier = Modifier.size(iconSize)
-                )
-            }
-        }
-
-        // ปุ่มกลาง FAB
-        CentralFab(
-            onClick = {
-                context.startActivity(Intent(context, Scanner::class.java))
-            }
-        )
-
-
-        IconButton(
-            onClick = {
-                context.startActivity(Intent(context, Add::class.java))
-                      },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = (-12).dp, y = (-70).dp) // ขยับขึ้น-ขวา
-                .size(50.dp)
-                .background(Color.White, shape = CircleShape)
-                .border(1.dp, Color.LightGray, shape = CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Add manually",
-                tint = Color.Black,
-                modifier = Modifier.size(iconSize)
-            )
-        }
-        IconButton(
-            onClick = {
-                navController.navigate("tutorial")
             },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 12.dp, y = (-70).dp)
-                .size(50.dp)
-                .background(Color(0xFF6B7280), shape = CircleShape)
-                .border(2.dp, Color.White, shape = CircleShape)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.help),
-                contentDescription = "Tutorial",
-                tint = Color.White,
-                modifier = Modifier.size(iconSize)
-            )
-        }
-
+            icon = {
+                Icon(
+                    if (!isSettingsScreen) Icons.Filled.Kitchen else Icons.Outlined.Kitchen,
+                    contentDescription = null
+                )
+            },
+            label = { Text("My Fridge") }
+        )
+        NavigationBarItem(
+            selected = isSettingsScreen,
+            onClick = { if (!isSettingsScreen) onSettingsChanged(true) },
+            icon = {
+                Icon(
+                    if (isSettingsScreen) Icons.Filled.Settings else Icons.Outlined.Settings,
+                    contentDescription = null
+                )
+            },
+            label = { Text("Settings") }
+        )
     }
 }
 
 
 @Composable
-fun CentralFab(onClick: () -> Unit) {
-    val blue400 = Color(0xFF6B82A8)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth() // Ensure the Box takes full width to center the FAB
-            .height(70.dp), // Match BottomAppBar height for alignment
-        contentAlignment = Alignment.TopCenter // Align FAB to the TopCenter of this Box
+fun ProductFabs(onScan: () -> Unit, onAddManually: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                // .align(Alignment.TopCenter) // This align is for the parent Box
-                .offset(y = (-40).dp)
-                .shadow(30.dp, RoundedCornerShape(30.dp), clip = false)
-                .clip(RoundedCornerShape(30.dp))
-                .background(blue400)
-                .clickable { onClick() }
-                .size(width = 130.dp, height = 70.dp),
-            contentAlignment = Alignment.Center
+        SmallFloatingActionButton(
+            onClick = onAddManually,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.testTag(UiTags.ADD_FAB)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .border(width = 4.dp, color = Color.Black, shape = CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Camera,
-                    contentDescription = "Add",
-                    tint = Color.Black,
-                    modifier = Modifier.size(45.dp)
-                )
-            }
+            Icon(Icons.Default.Edit, contentDescription = "Add manually")
         }
+        ExtendedFloatingActionButton(
+            onClick = onScan,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            icon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null) },
+            text = { Text("Scan") },
+            modifier = Modifier.testTag(UiTags.SCAN_FAB)
+        )
     }
 }
 
@@ -634,8 +525,6 @@ fun SmartImageLoader(
     imagePath: String,
     modifier: Modifier = Modifier
 ) {
-
-
     if (imagePath.isBlank()) {
         // รูป default ถ้า imagePath ว่าง
         Image(
@@ -659,6 +548,7 @@ fun SmartImageLoader(
         )
     }
 }
+
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun ProductListScreen(
@@ -667,9 +557,39 @@ fun ProductListScreen(
     viewModel: FilterViewModel
 ) {
     val filteredProducts by viewModel.filteredProducts.collectAsState()
+    val allProducts by viewModel.allProducts.collectAsState()
 
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
+    ProductGrid(
+        products = filteredProducts,
+        hasAnyProducts = allProducts.isNotEmpty(),
+        contentPadding = paddingValues,
+        onProductClick = { product ->
+            val intent = Intent(navController.context, Edit::class.java)
+            intent.putExtra("productData", product)
+            navController.context.startActivity(intent)
+        }
+    )
+}
+
+@SuppressLint("ConfigurationScreenWidthHeight")
+@Composable
+fun ProductGrid(
+    products: List<ProductData>,
+    hasAnyProducts: Boolean,
+    onProductClick: (ProductData) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(),
+) {
+    if (products.isEmpty()) {
+        EmptyState(
+            title = if (hasAnyProducts) "No matching items" else "Your fridge is empty",
+            message = if (hasAnyProducts) "Try a different search or clear your filters."
+            else "Tap Scan to add your first item.",
+            modifier = Modifier.padding(contentPadding)
+        )
+        return
+    }
+
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val columnCount = when {
         screenWidth < 600.dp -> 2
         screenWidth < 900.dp -> 3
@@ -679,21 +599,55 @@ fun ProductListScreen(
     LazyVerticalGrid(
         columns = GridCells.Fixed(columnCount),
         modifier = Modifier
-            .padding(paddingValues)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(contentPadding)
+            .testTag(UiTags.PRODUCT_GRID),
+        // Extra bottom space so the FABs don't cover the last row
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 136.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(filteredProducts) { product ->
+        items(products, key = { it.id }) { product ->
             ProductCard(
                 product = product,
-                onClick = {
-                    val intent = Intent(navController.context, Edit::class.java)
-                    intent.putExtra("productData", product)
-                    navController.context.startActivity(intent)
-                }
+                onClick = { onProductClick(product) }
             )
         }
+    }
+}
+
+@Composable
+fun EmptyState(title: String, message: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(32.dp)
+            .testTag(UiTags.EMPTY_STATE),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Outlined.Kitchen,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(48.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -731,30 +685,24 @@ fun TutorialVideoScreen(
         }
     }
 
-    // 3️⃣ ใช้ state `isPlaying` ใน UI
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF1F1F1F))
+    Surface(
+        color = MaterialTheme.colorScheme.inverseSurface,
+        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 16.dp)
         ) {
-            // Back button
-            IconButton(
-                onClick = { navController.popBackStack() },
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.1f), shape = CircleShape)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Text("How to use Mr. Fridge", style = MaterialTheme.typography.titleMedium)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -774,10 +722,10 @@ fun TutorialVideoScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp)
-                    .clip(RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp)
-                    .background(Color.DarkGray)
+                    .height(300.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(Color.Black)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -794,24 +742,27 @@ fun TutorialVideoScreen(
                     val pos = exoPlayer.currentPosition
                     exoPlayer.seekTo((pos - 10_000).coerceAtLeast(0))
                 }) {
-                    Icon(Icons.Default.Replay10, contentDescription = "Rewind", tint = Color.White)
+                    Icon(Icons.Default.Replay10, contentDescription = "Rewind")
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = {
-                        if (isPlaying) exoPlayer.pause()
-                        else exoPlayer.play()
-                    }) {
+                    FilledIconButton(
+                        onClick = {
+                            if (isPlaying) exoPlayer.pause()
+                            else exoPlayer.play()
+                        },
+                        modifier = Modifier.size(64.dp)
+                    ) {
                         Icon(
                             if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = "Play/Pause",
-                            tint = Color.White
+                            modifier = Modifier.size(32.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (isPlaying) "หยุด" else "เล่น",
-                        color = Color.White,
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
 
@@ -820,7 +771,7 @@ fun TutorialVideoScreen(
                     val dur = exoPlayer.duration
                     exoPlayer.seekTo((pos + 10_000).coerceAtMost(dur))
                 }) {
-                    Icon(Icons.Default.Forward10, contentDescription = "Forward", tint = Color.White)
+                    Icon(Icons.Default.Forward10, contentDescription = "Forward")
                 }
             }
 
@@ -829,19 +780,17 @@ fun TutorialVideoScreen(
             // Skip Button
             Button(
                 onClick = { navController.navigate("main") },
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF3B82F6)),
-                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 modifier = Modifier
+                    .fillMaxWidth()
                     .padding(16.dp)
-                    .height(50.dp)
+                    .height(52.dp)
             ) {
-                Text("Skip Tutorial", color = Color.White)
+                Text("Skip Tutorial")
             }
         }
     }
 }
-
-
-
-
-

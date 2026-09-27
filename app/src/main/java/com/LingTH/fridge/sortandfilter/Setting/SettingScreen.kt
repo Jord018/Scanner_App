@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.platform.testTag
+import com.LingTH.fridge.UiTags
+import com.LingTH.fridge.sortandfilter.SectionHeader
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,14 +87,13 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(getAdaptiveHorizontalPadding()) // Use adaptive padding utility
             .verticalScroll(scrollState)
+            .padding(horizontal = getAdaptiveHorizontalPadding(), vertical = 8.dp)
     ) {
         SettingsTopBar(navController)
 
         Column(modifier = Modifier.fillMaxWidth()) { // Changed from fillMaxSize to fillMaxWidth
-            Text("Notification Setting", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(16.dp))
+            SectionHeader("Notifications")
 
             SettingsItem("Alert before expired:", selectedText) {
                 visibleSelector = if (visibleSelector == VisibleSelector.ALERT_BEFORE_EXPIRED)
@@ -136,9 +139,12 @@ fun SettingsScreen(
                 viewModel.saveSettings(settings)
                 Toast.makeText(context, "Save successful", Toast.LENGTH_SHORT).show()
             },
-            modifier = Modifier.fillMaxWidth() // Added fillMaxWidth
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag(UiTags.SAVE_BUTTON)
             ) {
-                Text("Save Settings")
+                Text("Save Settings", style = MaterialTheme.typography.labelLarge)
             }
 
             Spacer(modifier = Modifier.height(16.dp))

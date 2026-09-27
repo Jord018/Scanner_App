@@ -49,6 +49,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Today
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.LingTH.fridge.ui.theme.MyApplicationTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTopAppBarState
@@ -110,8 +117,10 @@ class Edit : ComponentActivity() {
         viewModel = ViewModelProvider(this, factory)[Addviewmodel::class.java]
 
         setContent {
-            val navController = rememberNavController()
-            ProductScreen1(product = product, viewModel = viewModel, navController = navController)
+            MyApplicationTheme {
+                val navController = rememberNavController()
+                ProductScreen1(product = product, viewModel = viewModel, navController = navController)
+            }
         }
     }
 }
@@ -153,9 +162,9 @@ fun ProductScreen1(product: ProductData?, viewModel: Addviewmodel,navController:
         Column(
             modifier = Modifier
                 .padding(innerPadding) // Apply Scaffold's padding
-                .padding(horizontal = getAdaptiveHorizontalPadding()) // Use adaptive padding utility
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) // Make content scrollable
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = getAdaptiveHorizontalPadding(), vertical = 8.dp)
         ) {
             // Spacer(modifier = Modifier.height(16.dp)) // Original spacer, adjust if needed
 
@@ -166,7 +175,7 @@ fun ProductScreen1(product: ProductData?, viewModel: Addviewmodel,navController:
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             EmailInputExampleEdit(
                 productName1 = name,
@@ -193,6 +202,7 @@ fun ProductScreen1(product: ProductData?, viewModel: Addviewmodel,navController:
                 onValueChange = { notes = it }
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
             DeleteProductButton(
                 productId = product.id,
                 viewModel = viewModel,
@@ -304,15 +314,43 @@ fun CenterAlignedTopAppBarExampleEdit(
     val context1 = LocalContext.current
     val activity = context1 as? Activity
     val coroutineScope = rememberCoroutineScope()
+    val onSave: () -> Unit = {
+        Log.d("DEBUG", "Done button clicked")
+        coroutineScope.launch {
+            updateProductIfValidEdit(
+                id = id,
+                viewModel = viewModel,
+                barcode = barcode,
+                name = name,
+                categories = categories,
+                imageUrl = newImageUri?.toString() ?: imageUrl,
+                addDay = addDay,
+                expirationDate = expirationDate,
+                notes = notes,
+                context = context,
+                onComplete = {
+                    Log.d("NAVIGATION", "Navigating to MainActivity2")
+                    activity?.startActivity(Intent(activity, MainActivity2::class.java))
+                    activity?.finish()
+                }
+            )
+        }
+    }
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             CenterAlignedTopAppBar(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black,
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
-                    Text("Edit Product Information", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "Edit Product",
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 navigationIcon = {
                     BackButtonEdit(onBackClick = {
@@ -321,57 +359,20 @@ fun CenterAlignedTopAppBarExampleEdit(
                     })
                 },
                 actions = {
-                    Text(
-                        text = "Done",
-                        fontSize = 18.sp,
-                        modifier = Modifier.clickable {
-                            Log.d("DEBUG", "Done button clicked")
-                            coroutineScope.launch {
-                                updateProductIfValidEdit(
-                                    id = id,
-                                    viewModel = viewModel,
-                                    barcode = barcode,
-                                    name = name,
-                                    categories = categories,
-                                    imageUrl = newImageUri?.toString() ?: imageUrl,
-                                    addDay = addDay,
-                                    expirationDate = expirationDate,
-                                    notes = notes,
-                                    context = context,
-                                    onComplete = {
-                                        Log.d("NAVIGATION", "Navigating to MainActivity2")
-                                        activity?.startActivity(Intent(activity, MainActivity2::class.java))
-                                        activity?.finish()
-                                    }
-                                )
-                            }
-                        }
-                    )
+                    TextButton(onClick = onSave) { Text("Done") }
                 },
                 scrollBehavior = scrollBehavior,
             )
         },
-        content = content // Use the content lambda here
+        bottomBar = { FormSaveBar(text = "Save changes", onClick = onSave) },
+        content = content
     )
 }
 
 @Composable
 fun BackButtonEdit(onBackClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-        // Modifier.clickable {} removed
-        // Modifier.padding(start = 16.dp) removed
-    ) {
-        IconButton(onClick = onBackClick) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier.size(20.dp)
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-        }
+    IconButton(onClick = onBackClick) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
     }
 }
 
@@ -391,51 +392,20 @@ fun AddPhotoButtonEdit(
         onImageUriChanged(uri) // Notify ProductScreen about the new URI
     }
 
-    Box(
+    val model = currentUri.orUrl(imageUrl)
+    PhotoPicker(
+        painter = model?.let {
+            rememberAsyncImagePainter(
+                ImageRequest.Builder(LocalContext.current)
+                    .data(it)
+                    .memoryCachePolicy(CachePolicy.DISABLED) // force reload
+                    .diskCachePolicy(CachePolicy.DISABLED)
+                    .build()
+            )
+        },
+        onClick = { imagePickerLauncher.launch("image/*") },
         modifier = modifier
-            .fillMaxWidth(0.8f) // Changed width
-            .aspectRatio(16 / 9f) // Added aspect ratio
-            .clip(RoundedCornerShape(25.dp))
-            .background(Color(0xFFD3D3D3))
-            .clickable { imagePickerLauncher.launch("image/*") }, // Launch image picker
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            currentUri != null -> { // If a new image has been picked, display it
-                Image(
-                    painter = rememberAsyncImagePainter(
-                        ImageRequest.Builder(LocalContext.current)
-                            .data(currentUri)
-                            .memoryCachePolicy(CachePolicy.DISABLED)
-                            .diskCachePolicy(CachePolicy.DISABLED)
-                            .build()
-                    ),
-                    contentDescription = "Selected product image",
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            imageUrl != null && imageUrl.isNotBlank() -> { // Otherwise, if an existing imageUrl exists, display it
-                Image(
-                    painter = rememberAsyncImagePainter(
-                        ImageRequest.Builder(LocalContext.current)
-                            .data(imageUrl)
-                            .memoryCachePolicy(CachePolicy.DISABLED) // force reload
-                            .diskCachePolicy(CachePolicy.DISABLED)
-                            .build()
-                    ),
-                    contentDescription = "Product image",
-                    modifier = Modifier.fillMaxSize()
-                )
-
-            }
-            else -> { // Placeholder if no image
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.Image, contentDescription = null)
-                    Text("Add a photo of your product.", color = Color.Gray)
-                }
-            }
-        }
-    }
+    )
 }
 // Removed ScrollContentEdit as it's no longer used directly here or is implicit by passing content lambda
 
@@ -455,45 +425,11 @@ fun EmailInputExampleEdit(productName1: String, onValueChange: (String) -> Unit)
 
 @Composable
 fun EmailEdit(label: String, productName: String, onProductNameChange: (String) -> Unit, isVisible: Boolean, onToggleVisible: () -> Unit) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(isVisible) {
-        if (isVisible) focusRequester.requestFocus()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(50.dp))
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onToggleVisible() }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = label, fontSize = 14.sp, color = Color.Black, modifier = Modifier.weight(0.4f))
-
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                if (isVisible) {
-                    BasicTextField(
-                        value = productName,
-                        onValueChange = onProductNameChange,
-                        singleLine = true,
-                        textStyle = TextStyle(fontSize = 14.sp, color = Color.DarkGray),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                    )
-                } else {
-                    Text(text = productName.ifEmpty { "" }, fontSize = 14.sp, color = Color.DarkGray)
-                }
-            }
-        }
-    }
+    FormTextField(
+        label = label.trimEnd(':'),
+        value = productName,
+        onValueChange = onProductNameChange
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -517,6 +453,7 @@ fun ExpirationDateSelectorEdit(
 
     Column(modifier = Modifier.padding(0.dp)) {
         inputNotFileEdit(
+            icon = Icons.Filled.Event,
             label = "Expiration Date",
             value = datePickerState.selectedDateMillis?.let { convertMillisToDateEdit(it) } ?: "Select Date",
             onToggleVisible = { showDatePickerDialog = true } // Open dialog on click
@@ -574,8 +511,9 @@ fun DayAddEdit(
 
     Column(modifier = Modifier.padding(1.dp)) {
         inputNotFileEdit(
-            label = "Add Day",
-            value = day
+            label = "Added on",
+            value = day,
+            icon = Icons.Filled.Today
         ) {
             onDayChange(day) // Use the current value, or trigger date picker externally
         }
@@ -583,48 +521,14 @@ fun DayAddEdit(
 }
 
 @Composable
-fun inputNotFileEdit(label: String, value: String, onToggleVisible: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(50.dp))
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-            .clickable { onToggleVisible() }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                color = Color.Black,
-                modifier = Modifier.weight(0.4f)
-            )
-
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = value.ifEmpty { "Select Date" },
-                    fontSize = 14.sp,
-                    color = Color.DarkGray
-                )
-
-                Icon(
-                    imageVector = Icons.Filled.ChevronRight,
-                    contentDescription = null,
-                    tint = Color.DarkGray,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
+fun inputNotFileEdit(label: String, value: String, icon: ImageVector? = null, onToggleVisible: () -> Unit) {
+    FormPickerRow(
+        label = label.trimEnd(':'),
+        value = value,
+        placeholder = "Select Date",
+        onClick = onToggleVisible,
+        leadingIcon = icon
+    )
 }
 
 @Composable
@@ -632,14 +536,12 @@ fun NotesEdit(
     notes: String,
     onValueChange: (String) -> Unit
 ) {
-    var isVisible by remember { mutableStateOf(false) }
-
-    EmailEdit(
-        label = "Notes:",
-        productName = notes,
-        onProductNameChange = onValueChange,
-        isVisible = isVisible,
-        onToggleVisible = { isVisible = !isVisible }
+    FormTextField(
+        label = "Notes",
+        value = notes,
+        onValueChange = onValueChange,
+        singleLine = false,
+        minLines = 3
     )
 }
 
@@ -681,7 +583,8 @@ fun SettingsScreenaddEdit(
 
     inputNotFile(
         label = "Category:",
-        value = selectedText
+        value = selectedText,
+        icon = Icons.Filled.Category
     ) {
         visibleSelector = if (visibleSelector == VisibleSelector.ALERT_BEFORE_EXPIRED)
             VisibleSelector.NONE
@@ -693,16 +596,10 @@ fun SettingsScreenaddEdit(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(vertical = 4.dp)
         ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+            run {
+                run {
                     OptionSelector(
                         title = "Select a category:",
                         options = alertOptions,
@@ -731,11 +628,11 @@ fun SettingsScreenaddEdit(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        TextField(
+                        OutlinedTextField(
                             value = customOptionText,
                             onValueChange = { customOptionText = it },
                             label = { Text("Enter new category") },
@@ -785,10 +682,13 @@ fun DeleteProductButton(
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-        border = BorderStroke(1.dp, Color.Red)
+        shape = MaterialTheme.shapes.medium,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
     ) {
-        Text("Delete product", fontWeight = FontWeight.Bold)
+        Icon(Icons.Filled.DeleteOutline, contentDescription = null)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Delete product", style = MaterialTheme.typography.labelLarge)
     }
 }
 

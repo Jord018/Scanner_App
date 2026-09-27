@@ -3,6 +3,8 @@ package com.LingTH.fridge
 import android.net.Uri
 import com.LingTH.fridge.sortandfilter.Setting.viewmodel.SettingsViewModelFactory
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,11 +28,15 @@ fun NavigationGraph(
     val context = LocalContext.current
     val database = InventoryDatabase.getDatabase(context)
 
-    NavHost(navController = navController, startDestination = "productList") {
+    NavHost(
+        navController = navController,
+        startDestination = "productList",
+        modifier = Modifier.padding(paddingValues)
+    ) {
         composable("productList") {
             ProductListScreen(
                 navController = navController,
-                paddingValues = paddingValues,
+                paddingValues = PaddingValues(),
                 viewModel = filterViewModel
             )
         }

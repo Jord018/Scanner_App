@@ -49,6 +49,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Today
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.LingTH.fridge.ui.theme.MyApplicationTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTopAppBarState
@@ -123,7 +131,9 @@ class Add : ComponentActivity() {
         viewModel = ViewModelProvider(this, factory)[Addviewmodel::class.java] // ✅ Safe initialization
 
         setContent {
-            ProductScreen(barcode = barcode, viewModel = viewModel)
+            MyApplicationTheme {
+                ProductScreen(barcode = barcode, viewModel = viewModel)
+            }
         }
     }
 }
@@ -196,11 +206,18 @@ fun ProductScreen(barcode: String, viewModel: Addviewmodel) {
         Column(
             modifier = Modifier
                 .padding(innerPadding) // Apply Scaffold's padding
-                .padding(horizontal = getAdaptiveHorizontalPadding()) // Use adaptive padding utility
                 .fillMaxSize()
-            // Add .verticalScroll(rememberScrollState()) if content exceeds screen height
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = getAdaptiveHorizontalPadding(), vertical = 8.dp)
         ) {
-            // Spacer(modifier = Modifier.height(16.dp)) // Original spacer, adjust if needed
+            if (barcode.isNotBlank() && barcode != "No barcode found") {
+                Text(
+                    "Barcode $barcode",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
             AddPhotoButton(
                 imageUrl = imageUrl,
@@ -209,7 +226,7 @@ fun ProductScreen(barcode: String, viewModel: Addviewmodel) {
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             EmailInputExample(
                 productName1 = name,
@@ -350,12 +367,51 @@ fun CenterAlignedTopAppBarExample(
     val context1 = LocalContext.current
     val activity = context1 as? Activity
 
+    val onSave: () -> Unit = {
+        val finalImageUrl = newImageUri?.toString() ?: imageUrl
+        if (finalImageUrl.startsWith("content://")) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    Uri.parse(finalImageUrl),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        isSaved = true
+        saveProductIfValid(
+            viewModel = viewModel,
+            barcode = barcode,
+            name = name,
+            categories = categories,
+            imageUrl = finalImageUrl,
+            expirationDate = expirationDate,
+            notes = notes,
+            context = context,
+            onComplete = {
+                Log.d("onComplete", "called")
+                val intent = Intent(activity, MainActivity2::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                activity?.startActivity(intent)
+                activity?.finish()
+            }
+        )
+    }
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             CenterAlignedTopAppBar(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = {
                     Text(
-                        text = "Enter Product Information",
+                        text = "Add Product",
+                        style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -364,47 +420,12 @@ fun CenterAlignedTopAppBarExample(
                     BackButton(onBackClick)
                 },
                 actions = {
-                    Text(
-                        text = "Done",
-                        fontSize = 18.sp,
-                        modifier = Modifier.clickable {
-                            val finalImageUrl = newImageUri?.toString() ?: imageUrl
-                            if (finalImageUrl.startsWith("content://")) {
-                                try {
-                                    context.contentResolver.takePersistableUriPermission(
-                                        Uri.parse(finalImageUrl),
-                                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                    )
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-
-                            isSaved = true
-                            saveProductIfValid(
-                                viewModel = viewModel,
-                                barcode = barcode,
-                                name = name,
-                                categories = categories,
-                                imageUrl = finalImageUrl,
-                                expirationDate = expirationDate,
-                                notes = notes,
-                                context = context,
-                                onComplete = {
-                                    Log.d("onComplete", "called")
-                                    val intent = Intent(activity, MainActivity2::class.java).apply {
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                    }
-                                    activity?.startActivity(intent)
-                                    activity?.finish()
-                                }
-                            )
-                        }
-                    )
+                    TextButton(onClick = onSave) { Text("Done") }
                 },
                 scrollBehavior = scrollBehavior,
             )
         },
+        bottomBar = { FormSaveBar(text = "Save product", onClick = onSave) },
         content = content
     )
 }
@@ -414,20 +435,8 @@ fun CenterAlignedTopAppBarExample(
 
 @Composable
 fun BackButton(onBackClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-        // Modifier.clickable {} removed
-        // Modifier.padding(start = 16.dp) removed
-    ) {
-        IconButton(onClick = onBackClick) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-
-        }
+    IconButton(onClick = onBackClick) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
     }
 }
 
@@ -447,38 +456,12 @@ fun AddPhotoButton(
         onImageUriChanged(uri) // Notify ProductScreen about the new URI
     }
 
-    Box(
+    val model = currentUri.orUrl(imageUrl)
+    PhotoPicker(
+        painter = model?.let { rememberAsyncImagePainter(it) },
+        onClick = { imagePickerLauncher.launch("image/*") },
         modifier = modifier
-            .fillMaxWidth(0.8f) // Changed width
-            .aspectRatio(16 / 9f) // Added aspect ratio
-            .clip(RoundedCornerShape(25.dp))
-            .background(Color(0xFFD3D3D3))
-            .clickable { imagePickerLauncher.launch("image/*") }, // Launch image picker
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            currentUri != null -> { // If a new image has been picked, display it
-                Image(
-                    painter = rememberAsyncImagePainter(currentUri),
-                    contentDescription = "Selected product image",
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            imageUrl != null && imageUrl.isNotBlank() -> { // Otherwise, if an existing imageUrl exists, display it
-                Image(
-                    painter = rememberAsyncImagePainter(imageUrl),
-                    contentDescription = "Product image",
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            else -> { // Placeholder if no image
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.Image, contentDescription = null)
-                    Text("Add a photo of your product.", color = Color.Gray)
-                }
-            }
-        }
-    }
+    )
 }
 // Removed ScrollContent as it's no longer used directly here or is implicit by passing content lambda
 
@@ -498,45 +481,11 @@ fun EmailInputExample(productName1: String, onValueChange: (String) -> Unit) {
 
 @Composable
 fun Email(label: String, productName: String, onProductNameChange: (String) -> Unit, isVisible: Boolean, onToggleVisible: () -> Unit) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(isVisible) {
-        if (isVisible) focusRequester.requestFocus()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(50.dp))
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onToggleVisible() }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = label, fontSize = 14.sp, color = Color.Black, modifier = Modifier.weight(0.4f))
-
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                if (isVisible) {
-                    BasicTextField(
-                        value = productName,
-                        onValueChange = onProductNameChange,
-                        singleLine = true,
-                        textStyle = TextStyle(fontSize = 14.sp, color = Color.DarkGray),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                    )
-                } else {
-                    Text(text = productName.ifEmpty { "" }, fontSize = 14.sp, color = Color.DarkGray)
-                }
-            }
-        }
-    }
+    FormTextField(
+        label = label.trimEnd(':'),
+        value = productName,
+        onValueChange = onProductNameChange
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -556,6 +505,7 @@ fun ExpirationDateSelector(
         inputNotFile(
             label = "Expiration Date",
             value = datePickerState.selectedDateMillis?.let { convertMillisToDate(it) } ?: "Select Date",
+            icon = Icons.Filled.Event,
             onToggleVisible = { showDatePickerDialog = true }
         )
 
@@ -632,12 +582,12 @@ fun DayAdd(
     }
 
     Column(modifier = Modifier.padding(1.dp)) {
-        inputNotFile(
-            label = "Add Day",
+        FormPickerRow(
+            label = "Added on",
             value = day,
-            onToggleVisible = {
-                // Optional: add DatePicker if needed
-            }
+            placeholder = "",
+            onClick = null,
+            leadingIcon = Icons.Filled.Today
         )
     }
 }
@@ -646,48 +596,14 @@ fun DayAdd(
 
 
 @Composable
-fun inputNotFile(label: String, value: String, onToggleVisible: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(50.dp))
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-            .clickable { onToggleVisible() }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                color = Color.Black,
-                modifier = Modifier.weight(0.4f)
-            )
-
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = value.ifEmpty { "Select Category" },
-                    fontSize = 14.sp,
-                    color = Color.DarkGray
-                )
-
-                Icon(
-                    imageVector = Icons.Filled.ChevronRight,
-                    contentDescription = null,
-                    tint = Color.DarkGray,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
+fun inputNotFile(label: String, value: String, icon: ImageVector? = null, onToggleVisible: () -> Unit) {
+    FormPickerRow(
+        label = label.trimEnd(':'),
+        value = value,
+        placeholder = "Select Category",
+        onClick = onToggleVisible,
+        leadingIcon = icon
+    )
 }
 
 @Composable
@@ -695,14 +611,12 @@ fun Notes(
     notes: String,
     onValueChange: (String) -> Unit
 ) {
-    var isVisible by remember { mutableStateOf(false) }
-
-    Email(
-        label = "Notes:",
-        productName = notes,
-        onProductNameChange = onValueChange,
-        isVisible = isVisible,
-        onToggleVisible = { isVisible = !isVisible }
+    FormTextField(
+        label = "Notes",
+        value = notes,
+        onValueChange = onValueChange,
+        singleLine = false,
+        minLines = 3
     )
 }
 
@@ -744,7 +658,8 @@ fun SettingsScreenadd(
 
     inputNotFile(
         label = "Category:",
-        value = selectedText
+        value = selectedText,
+        icon = Icons.Filled.Category
     ) {
         visibleSelector = if (visibleSelector == VisibleSelector.ALERT_BEFORE_EXPIRED)
             VisibleSelector.NONE
@@ -756,16 +671,10 @@ fun SettingsScreenadd(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(vertical = 4.dp)
         ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+            run {
+                run {
                     OptionSelector(
                         title = "Select a category:",
                         options = alertOptions,
@@ -794,11 +703,11 @@ fun SettingsScreenadd(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        TextField(
+                        OutlinedTextField(
                             value = customOptionText,
                             onValueChange = { customOptionText = it },
                             label = { Text("Enter new category") },
@@ -838,14 +747,3 @@ enum class VisibleSelector {
     ALERT_BEFORE_EXPIRED
 
 }
-@Composable
-fun getAdaptiveHorizontalPadding(): Dp {
-    val configuration = LocalConfiguration.current
-    return when {
-        configuration.screenWidthDp < 360 -> 8.dp
-        configuration.screenWidthDp < 600 -> 16.dp
-        else -> 32.dp
-    }
-}
-
-

@@ -15,7 +15,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -144,12 +145,10 @@ fun SandFscreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(16.dp)
             .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Text("Filter by:", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        Spacer(modifier = Modifier.height(16.dp))
+        SectionHeader("Filter by")
 
         // Category
         SettingsItem("Category", selectCategory) {
@@ -228,7 +227,7 @@ fun SandFscreen(
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Sort by:", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        SectionHeader("Sort by")
 
 // Sort by Name
         SettingsItem("Product", if (selectedSortByName.isBlank()) "" else selectedSortByName) {
@@ -268,6 +267,16 @@ fun SandFscreen(
 
 
 
+}
+
+@Composable
+fun SectionHeader(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
+    )
 }
 
 // Utility function
