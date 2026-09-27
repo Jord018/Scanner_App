@@ -66,6 +66,11 @@ android {
         xmlOutput = layout.buildDirectory.file("reports/lint-results.xml").get().asFile
     }
 
+    testOptions {
+        // Code under test logs through android.util.Log; return defaults instead of throwing on the JVM
+        unitTests.isReturnDefaultValues = true
+    }
+
 }
 
 dependencies {
@@ -142,6 +147,11 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation ("androidx.core:core-ktx:1.16.0")
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.arch.core.testing)
+    androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.test.core.ktx)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
